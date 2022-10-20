@@ -17,6 +17,24 @@
  *      Long press Tx button is tune mode.
  *      Tap Tx button to cancel tx inhibit on band change.
  *      
+ *      Some thoughts about the audio zero cross detection used.
+ *      The Teensy audio library processes data in 128 byte buffers.  With a sampling rate of 44.1 khz each buffer
+ *      has 3 ms of data.  The USB audio data arrives in digital form.  The routine looks for rising zero crosses, and
+ *      it will report the last one found in the buffer.  This means the zero crosses are sampled at a rate of about
+ *      333 times a second.  If a 75 baud RTTY signal was being sent, each baud would be sampled only 4 times.  This 
+ *      would result in some tones being extended by 1/4 of a baud and some shortened by 1/4.  So this method is 
+ *      useful for slow baud rates only.  ( RTTY probably will work with some increase in errors )
+ *      Also the frequency of the tone makes a difference.  A tone of 3000 hz would have 9 or 10 zero crosses in each
+ *      buffer.   A tone of 300 hz would have 0 or 1 in each buffer.  Tones lower than 333 hz would take 2 buffers to
+ *      find a zero cross reducing the zero cross sampling from 333 times a second to half that.  This will halve the
+ *      useful baud rate that can be sent.
+ *      
+ *      WSPR is 1.46 baud,  FT8 is 6.25 baud.  These modes will work fine sampled at 300 or 150 times a second.
+ *      
+ *      Or to look at this a different way, each WSPR or FT8 tone could be extended or shorted by  0 to 3 ms, or
+ *      0 to 6 ms for tones lower than 333 hz.
+ *      
+ *      
  */
 
 #include <Audio.h>
@@ -707,7 +725,7 @@ char cmd2;
 /********************* end Argo V CAT ******************************/
 
 
-// some of my early SI5251 code, inits all the registers from a table
+// some of my early SI5351 code, inits all the registers from a table
 // load the table produced by clock builder into the clock chip
 void si5351_init(){
  
@@ -798,6 +816,7 @@ void  si_pll_x(unsigned char pll, uint64_t freq, int out_divider, float fract ){
 
 
 // init has loaded other registers with the clock builder values to allow this simplified code to work
+// actually had to set some registers in setup() to get this to work
 void si_load_divider( int val, int clk , int rst){
  
    val = 128 * val - 512;
