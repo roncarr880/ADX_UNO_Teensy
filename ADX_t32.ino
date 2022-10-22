@@ -34,6 +34,9 @@
  *      Or to look at this a different way, each WSPR or FT8 tone could be extended or shorted by  0 to 3 ms, or
  *      0 to 6 ms for tones lower than 333 hz.
  *      
+ *      For best accuracy in generating fractional frequencies the divider should be as high as possible which puts
+ *      the PLL at the higher end near 900 mhz.
+ *      
  *      
  */
 
@@ -93,13 +96,13 @@ struct BAND {
 #define NUM_MODES 4
 
 struct BAND bands[NUM_BANDS] = {
- //{8, 208 , 3573000,   3575000,   3578000,   3568600},      // 80
-   {4, 104 , 7074000,   7047500,   7078000,   7038600},      // 40
-   {3,  74 , 10136000, 10140000,  10130000,  10138700},      // 30
-   {2,  54 , 14074000, 14080000,  14078000,  14095600},      // 20
- //{15, 42,  18100000, 18104000,  18104000,  18104600},      // 17  
-   {13, 36,  21074000, 21140000,  21078000,  21094600}      // 15
- //{1 , 26,  28074000, 28180000,  28078000,  28124600}       // 10
+ //{8, 220 , 3573000,   3575000,   3578000,   3568600},      // 80
+   {4, 112 , 7074000,   7047500,   7078000,   7038600},      // 40
+   {3,  80 , 10136000, 10140000,  10130000,  10138700},      // 30
+   {2,  60 , 14074000, 14080000,  14078000,  14095600},      // 20
+ //{15, 46 , 18100000, 18104000,  18104000,  18104600},      // 17  
+   {13, 40 , 21074000, 21140000,  21078000,  21094600}      // 15
+ //{1 , 30 , 28074000, 28180000,  28078000,  28124600}       // 10
 };
 
 int mode_led[NUM_MODES] = { FT8_LED, FT4_LED, JS8_LED, WSPR_LED };
@@ -136,6 +139,7 @@ AudioConnection          patchCord6(adc1, 0, usb1, 1);
 
 
 void setup() {
+int temp;
 
    Wire.begin();
 
@@ -152,6 +156,9 @@ void setup() {
    EEPROM.get(0,cal);
    if( cal > 10000 || cal < -10000 ) cal = 0;    // out of range
    if( cal == -1 ) cal = 0;                      // blank eeprom value
+
+   EEPROM.get(10,temp);
+   if( temp >= 0 && temp < NUM_BANDS ) band = temp;
 
 //0.54119610  butterworth cascade Q values for two sections biquads
 //1.3065630
@@ -223,8 +230,10 @@ void loop() {
 static unsigned long tm;
 static int db;  
 
-  led_control();    // the LED's control themselves depending upon mode, band, etc.
-  radio_control();
+  led_control();       // the LED's control themselves depending upon mode, band, etc.
+  radio_control();     // CAT
+  vox_check();         // Audio TX signal level
+  send_tone();         // transmit detected zero cross tones
 
   // 1ms routines
   if( tm != millis() ){
@@ -233,8 +242,6 @@ static int db;
      mode_change();
      band_change();
      tx_button();
-     vox_check();
-     send_tone();
      ++db;              // debug timer
 
      if( cal_write_pending){
@@ -281,6 +288,7 @@ void tx_button(){
    if( sw_state[1] < TAP ) return;
    if( sw_state[1] == TAP && tx_inhibit ){
       tx_inhibit = 0;
+      save_band();                           // user says filter in place, this is now the default band
    }
    
    if( sw_state[1] == LONGPRESS ){           // Tune mode
@@ -314,7 +322,11 @@ void mode_change(){
 
 void save_cal(){            // save the calibrate value
 
-    EEPROM.put(0, cal );  
+    EEPROM.put( 0, cal );  
+}
+
+void save_band(){
+    EEPROM.put( 10, band );
 }
 
 void adj_cal( long val ){
