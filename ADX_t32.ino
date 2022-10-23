@@ -37,6 +37,9 @@
  *      For best accuracy in generating fractional frequencies the divider should be as high as possible which puts
  *      the PLL at the higher end near 900 mhz.
  *      
+ *      A note to me:   My protoboard had a short on the audio in ( A2 ), most likely in the corner at the input to
+ *      the op-amp.  It was probably a short through the masking to the ground plane.  
+ *      
  *      
  */
 
@@ -61,6 +64,8 @@
 
  // control
  #define RX_EN 8     // high for RX enable, signal marked on schematic as RXSW
+                     // added a pullup on this pin so the rx/tx FET sees +5 volts on the gate instead of 3 to 
+                     // ensure it is fully on during receive
 
  // switches
  #define SW_DN 2
@@ -196,7 +201,8 @@ int temp;
    i2cd( SI5351, 3, 0xff ^ 2 );       // enable rx clock, clock 1
      //i2cd( SI5351, 3, 0xff ^ 7 );     // !!! all clocks on, testing  
 
-   digitalWrite( RX_EN, HIGH );
+   //digitalWrite( RX_EN, HIGH );
+   pinMode( RX_EN, INPUT );
 
 
 }
@@ -206,6 +212,7 @@ void tx(){
 
   if( tx_inhibit ) return;
   i2cd( SI5351, 3, 0xff );         // clocks off
+  pinMode( RX_EN, OUTPUT );
   digitalWrite( RX_EN, LOW );      // rx disable switch
   transmitting = 1;
   Zero_Cross_Det.setmode( 1 );
@@ -222,7 +229,8 @@ void rx(){
    Zero_Cross_Det.setmode( 0 );
    band_change3();               // back to rx clock frequency
    i2cd( SI5351, 3, 0xff ^ 2 );  // rx clock on
-   digitalWrite( RX_EN, HIGH );  // rx enabled
+   //digitalWrite( RX_EN, HIGH );  // rx enabled
+   pinMode( RX_EN, INPUT );
   
 }
 
