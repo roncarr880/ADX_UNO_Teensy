@@ -324,6 +324,7 @@ void mode_change(){
 
     // DTAP handled in another function
     // LONGPRESS changes cal, moves waterfall signal in direction of button arrow
+    // this and being USB makes it reverse for the TX signal, up is down.
     if( sw_state[0] == LONGPRESS ) adj_cal( -10L ), sw_state[0] = FINI;
     if( sw_state[2] == LONGPRESS ) adj_cal( 10L ), sw_state[2] = FINI;
 }
@@ -816,7 +817,7 @@ void  si_pll_x(unsigned char pll, uint64_t freq, int out_divider, float fract ){
    a = pll_freq / (clock_freq);
    r = pll_freq - a * (clock_freq);
    b = ( c * r ) / (clock_freq);
-   bc128 =  (128 * r)/ (clock_freq);
+   bc128 =  (128 * r)/ (clock_freq);         // 128*b/c, b = c*r, sub c*r for b,  128*c*r/c,   128*r, div by cfreq, get some fraction of 128
    P1 = 128 * a + bc128 - 512;
    P2 = 128 * b - c * bc128;
    if( P2 > c ) P2 = 0;        // ? avoid negative numbers 
